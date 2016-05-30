@@ -1,5 +1,4 @@
 <?php
-use Predis\Client;
 /**
  * Base Resque class.
  *
@@ -9,12 +8,12 @@ use Predis\Client;
  */
 class Resque
 {
-	const VERSION = '2.0';
+	const VERSION = '1.4';
 
     const DEFAULT_INTERVAL = 5;
 
 	/**
-	 * @var Client
+	 * @var Resque_Redis Instance of Resque_Redis that talks to redis.
 	 */
 	public static $redis = null;
 
@@ -47,9 +46,9 @@ class Resque
 	}
 
 	/**
-	 * Return an instance of the predis client class instantiated for Resque.
+	 * Return an instance of the Resque_Redis class instantiated for Resque.
 	 *
-	 * @return Client the predis client
+	 * @return Resque_Redis Instance of Resque_Redis.
 	 */
 	public static function redis()
 	{
@@ -60,13 +59,7 @@ class Resque
 		if (is_callable(self::$redisServer)) {
 			self::$redis = call_user_func(self::$redisServer, self::$redisDatabase);
 		} else {
-
-			if (is_array(self::$redisServer)) {
-				self::$redis = new Client(self::$redisServer, ['prefix' => 'resque:']);
-			} else {
-				$args = Resque_Redis::parseDsn(self::$redisServer);
-				self::$redis = new Client($args, ['prefix' => 'resque:']);
-			}
+			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase);
 		}
 
 		return self::$redis;

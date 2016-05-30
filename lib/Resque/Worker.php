@@ -409,8 +409,6 @@ class Resque_Worker
 			return;
 		}
 
-		$output = array();
-		$returnCode = 1;
 		$this->logger->log(Psr\Log\LogLevel::INFO, 'Killing child at {child}', array('child' => $this->child));
 		if(exec('ps -o pid,state -p ' . $this->child, $output, $returnCode) && $returnCode != 1) {
 			$this->logger->log(Psr\Log\LogLevel::DEBUG, 'Child {child} found, killing.', array('child' => $this->child));
@@ -456,7 +454,6 @@ class Resque_Worker
 	public function workerPids()
 	{
 		$pids = array();
-		$cmdOutput = array();
 		exec('ps -A -o pid,command | grep [r]esque', $cmdOutput);
 		foreach($cmdOutput as $line) {
 			list($pids[],) = explode(' ', trim($line), 2);
