@@ -297,13 +297,32 @@ class Resque_Worker
 	 */
 	public function queues($fetch = true)
 	{
-		if(!in_array('*', $this->queues) || $fetch == false) {
+		if ($fetch == false)
 			return $this->queues;
-		}
+
+		$user_queues = implode('|', $this->queues);
+		if (strpos($user_queues, '*') === FALSE)
+			return $this->queues;
 
 		$queues = Resque::queues();
 		sort($queues);
-		return $queues;
+		if (in_array('*', $this->queues))
+			return $queues;
+
+		$matching_queues = [];
+		$user_queues_regexp = [];
+		foreach ($this->queues as $queue) {
+			if (strpos($queue, '*') === FALSE)
+				$matching_queues[] = $queue;
+			else {
+				foreach ($queues as $rqueue) {
+					if (fnmatch($queue, $rqueue))
+						$matching_queues[] = $rqueue;
+				}
+			}
+		}
+
+		return $matching_queues;
 	}
 
 	/**
