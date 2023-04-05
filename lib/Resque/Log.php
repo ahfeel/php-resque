@@ -38,7 +38,7 @@ class Resque_Log extends Psr\Log\AbstractLogger
 	 * @param array   $context  Variables to replace { placeholder }
 	 * @return null
 	 */
-	public function log($level, $message, array $context = array())
+    public function log($level, string|\Stringable $message, array $context = []): void
 	{
 		if (!empty($this->logger))
 			$this->logger->log($level, $this->interpolate($message, $context));
