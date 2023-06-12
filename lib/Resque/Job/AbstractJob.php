@@ -6,5 +6,5 @@ abstract class Resque_AbstractJob
     public string $queue;
     public array $args;
 
-    public abstract function perform(): void;
+    public abstract function perform();
 }
