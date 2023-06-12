@@ -1,6 +1,6 @@
 <?php
 
-abstract class Resque_AbstractJob
+abstract class Resque_Job_AbstractJob
 {
     public Resque_Job $job;
     public string $queue;

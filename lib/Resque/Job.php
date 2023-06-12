@@ -177,7 +177,7 @@ class Resque_Job
 
 		$this->instance = new $this->payload['class'];
 
-        if ($this->instance instanceof Resque_AbstractJob) {
+        if ($this->instance instanceof Resque_Job_AbstractJob) {
             $this->instance->job = $this;
             $this->instance->args = $this->getArguments();
             $this->instance->queue = $this->queue;
