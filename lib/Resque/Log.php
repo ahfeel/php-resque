@@ -47,7 +47,7 @@ class Resque_Log extends Psr\Log\AbstractLogger
 
 				fwrite(
 					STDOUT,
-					'[' . $level . '] [' . strftime('%T %Y-%m-%d') . '] ' . $this->interpolate($message, $context) . PHP_EOL
+					'[' . $level . '] [' . date('c') . '] ' . $this->interpolate($message, $context) . PHP_EOL
 				);
 				return;
 			}

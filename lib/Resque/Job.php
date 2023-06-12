@@ -176,9 +176,13 @@ class Resque_Job
 		}
 
 		$this->instance = new $this->payload['class'];
-		$this->instance->job = $this;
-		$this->instance->args = $this->getArguments();
-		$this->instance->queue = $this->queue;
+
+        if ($this->instance instanceof AbstractJob) {
+            $this->instance->job = $this;
+            $this->instance->args = $this->getArguments();
+            $this->instance->queue = $this->queue;
+        }
+
 		return $this->instance;
 	}
 
