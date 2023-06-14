@@ -28,6 +28,8 @@ class Resque
 	 */
 	protected static $redisDatabase = 0;
 
+    protected static $logger = null;
+
 	/**
 	 * Given a host/port combination separated by a colon, set it as
 	 * the redis server that Resque will talk to.
@@ -45,6 +47,11 @@ class Resque
 		self::$redis         = null;
 	}
 
+    public static function setLogger($logger)
+    {
+        self::$logger = $logger;
+    }
+
 	/**
 	 * Return an instance of the Resque_Redis class instantiated for Resque.
 	 *
@@ -57,9 +64,9 @@ class Resque
 		}
 
 		if (is_callable(self::$redisServer)) {
-			self::$redis = call_user_func(self::$redisServer, self::$redisDatabase);
+			self::$redis = call_user_func(self::$redisServer, self::$redisDatabase, self::$logger);
 		} else {
-			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase);
+			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase, self::$logger);
 		}
 
 		return self::$redis;

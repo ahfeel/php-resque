@@ -73,6 +73,8 @@ if (!isset($logger) || !is_object($logger)) {
     $logger = new Resque_Log($logLevel);
 }
 
+Resque::setLogger($logger);
+
 $BLOCKING = getenv('BLOCKING') !== FALSE;
 
 $interval = 5;

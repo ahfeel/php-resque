@@ -270,7 +270,7 @@ class Resque_Worker
                 usleep($timeout * 1000000);
                 return false;
             }
-			$job = Resque_Job::reserveBlocking($queues, $timeout);
+            $job = Resque_Job::reserveBlocking($queues, $timeout);
 			if($job) {
 				$this->logger->log(Psr\Log\LogLevel::INFO, 'Found job on {queue}', array('queue' => $job->queue));
 				return $job;
@@ -278,7 +278,7 @@ class Resque_Worker
 		} else {
 			foreach($queues as $queue) {
 				$this->logger->log(Psr\Log\LogLevel::DEBUG, 'Checking {queue} for jobs', array('queue' => $queue));
-				$job = Resque_Job::reserve($queue);
+                $job = Resque_Job::reserve($queue);
 				if($job) {
 					$this->logger->log(Psr\Log\LogLevel::INFO, 'Found job on {queue}', array('queue' => $job->queue));
 					return $job;
@@ -373,13 +373,15 @@ class Resque_Worker
 			return;
 		}
 
-		declare(ticks = 1);
+        pcntl_async_signals(true);
+
 		pcntl_signal(SIGTERM, array($this, 'shutDownNow'));
 		pcntl_signal(SIGINT, array($this, 'shutDownNow'));
 		pcntl_signal(SIGQUIT, array($this, 'shutdown'));
 		pcntl_signal(SIGUSR1, array($this, 'killChild'));
 		pcntl_signal(SIGUSR2, array($this, 'pauseProcessing'));
 		pcntl_signal(SIGCONT, array($this, 'unPauseProcessing'));
+
 		$this->logger->log(Psr\Log\LogLevel::DEBUG, 'Registered signals');
 	}
 
@@ -409,6 +411,10 @@ class Resque_Worker
 	public function shutdown()
 	{
 		$this->shutdown = true;
+        if ($this->child){
+            $this->logger->log(Psr\Log\LogLevel::NOTICE, 'Shutting down child');
+            return;
+        }
 		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Shutting down');
 	}
 
@@ -436,7 +442,7 @@ class Resque_Worker
 		$this->logger->log(Psr\Log\LogLevel::INFO, 'Killing child at {child}', array('child' => $this->child));
 		if(exec('ps -o pid,state -p ' . $this->child, $output, $returnCode) && $returnCode != 1) {
 			$this->logger->log(Psr\Log\LogLevel::DEBUG, 'Child {child} found, killing.', array('child' => $this->child));
-			posix_kill($this->child, SIGKILL);
+			posix_kill($this->child, SIGTERM);
 			$this->child = null;
 		}
 		else {

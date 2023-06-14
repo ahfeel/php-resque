@@ -93,7 +93,12 @@ class Resque_Redis
 	// mset
 	// renamenx
 
+    private $server;
+    private $database;
+
 	private $driver;
+
+    private $isSentinel = false;
 
 	/**
 	 *
@@ -118,37 +123,72 @@ class Resque_Redis
 	 * @param int $database A database number to select. However, if we find a valid database number in the DSN the
 	 *                      DSN-supplied value will be used instead and this parameter is ignored.
 	 */
-    public function __construct($server, $database = null)
+    public function __construct($server, $database = null, $logger = null)
 	{
-    	$this->logger = false;
-		if (is_array($server)) {
-			$this->driver = new Credis_Cluster($server);
-		}
-		else {
+    	$this->logger = $logger;
+        $this->server = $server;
+        $this->database = $database;
 
-			list($host, $port, $dsnDatabase, $user, $password, $options) = self::parseDsn($server);
-			// $user is not used, only $password
-
-			// Look for known Credis_Client options
-			$timeout = isset($options['timeout']) ? intval($options['timeout']) : null;
-			$persistent = isset($options['persistent']) ? $options['persistent'] : '';
-
-			$this->driver = new Credis_Client($host, $port, $timeout, $persistent);
-			if ($password){
-				$this->driver->auth($password);
-			}
-
-			// If we have found a database in our DSN, use it instead of the `$database`
-			// value passed into the constructor.
-			if ($dsnDatabase !== false) {
-				$database = $dsnDatabase;
-			}
-		}
-
-		if ($database !== null) {
-			$this->driver->select($database);
-		}
+        $this->initDriver();
 	}
+
+    public function initDriver()
+    {
+        if ($this->logger) {
+            $this->logger->info('Initializing redis driver.');
+        }
+
+        $database = $this->database;
+
+        if (is_array($this->server)) {
+            $this->driver = new Credis_Cluster($this->server);
+        } else {
+
+            list($scheme, $host, $port, $dsnDatabase, $user, $password, $options) = self::parseDsn($this->server);
+            // $user is not used, only $password
+
+            // Look for known Credis_Client options
+            $timeout = isset($options['timeout']) ? intval($options['timeout']) : null;
+            $persistent = isset($options['persistent']) ? $options['persistent'] : '';
+
+            $this->driver = new Credis_Client($host, $port, $timeout, $persistent);
+            if ($password){
+                $this->driver->auth($password);
+            }
+
+            if ($scheme === 'sentinel') {
+                $sentinel = new Credis_Sentinel($this->driver, $password);
+                $clusterName = $options['cluster'] ?? 'mymaster';
+
+                if ($this->logger) {
+                    $this->logger->debug('Sentinel mode, looking for master for cluster ' . $clusterName);
+                }
+
+                $masterAddr = $sentinel->getMasterAddressByName($clusterName);
+
+                if (!$masterAddr) {
+                    throw new CredisException('Failed to fetch master for cluster ' . $clusterName);
+                }
+
+                if ($this->logger) {
+                    $this->logger->debug('Connecting to master node ' . print_r($masterAddr, true));
+                }
+
+                $this->driver = $sentinel->getMasterClient($clusterName);
+                $this->isSentinel = true;
+            }
+
+            // If we have found a database in our DSN, use it instead of the `$database`
+            // value passed into the constructor.
+            if ($dsnDatabase !== false) {
+                $database = $dsnDatabase;
+            }
+        }
+
+        if ($database !== null) {
+            $this->driver->select($database);
+        }
+    }
 
 	/**
 	 *
@@ -180,8 +220,12 @@ class Resque_Redis
 		$parts = parse_url($dsn);
 
 		// Check the URI scheme
-		$validSchemes = array('redis', 'tcp');
-		if (isset($parts['scheme']) && ! in_array($parts['scheme'], $validSchemes)) {
+		$validSchemes = array('redis', 'tcp', 'sentinel');
+        if (!isset($parts['scheme'])) {
+            $parts['scheme'] = 'tcp';
+        }
+
+		if (! in_array($parts['scheme'], $validSchemes)) {
 			throw new \InvalidArgumentException("Invalid DSN. Supported schemes are " . implode(', ', $validSchemes));
 		}
 
@@ -213,6 +257,7 @@ class Resque_Redis
 		}
 
 		return array(
+            $parts['scheme'] ?: 'tcp',
 			$parts['host'],
 			$port,
 			$database,
@@ -232,6 +277,10 @@ class Resque_Redis
 	 */
 	public function __call($name, $args)
 	{
+        if (!$this->driver) {
+            $this->initDriver();
+        }
+
 		if (in_array($name, $this->keyCommands)) {
 			if (is_array($args[0])) {
 				foreach ($args[0] AS $i => $v) {
@@ -247,8 +296,13 @@ class Resque_Redis
 		}
 		catch (CredisException $e) {
 			if ($this->logger) {
-				$this->logger->critical("Could not call redis command [$name]: ".$e->getTraceAsString());
+				$this->logger->critical("Could not call redis command [$name]: ".$e->getMessage().' '.$e->getTraceAsString());
 			}
+
+            if ($this->isSentinel) {
+                $this->driver = null;
+            }
+
 			return false;
 		}
 	}
