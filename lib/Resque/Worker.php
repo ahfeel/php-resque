@@ -49,6 +49,9 @@ class Resque_Worker
 	 */
 	private $child = null;
 
+    // Prune workers every 300 seconds
+    private $lastPrune = null;
+
     /**
      * Instantiate a new worker, given a list of queues that it should be working
      * on. The list of queues should be supplied in the priority that they should
@@ -154,6 +157,12 @@ class Resque_Worker
 			if($this->shutdown) {
 				break;
 			}
+
+            $this->heartBeat();
+
+            if (time() - $this->lastPrune > 300) {
+                $this->pruneDeadWorkers();
+            }
 
 			// Attempt to find and reserve a job
 			$job = false;
@@ -461,16 +470,24 @@ class Resque_Worker
 	 */
 	public function pruneDeadWorkers()
 	{
+        $this->lastPrune = time();
+
 		$workerPids = $this->workerPids();
 		$workers = self::all();
 		foreach($workers as $worker) {
 			if (is_object($worker)) {
 				list($host, $pid, $queues) = explode(':', (string)$worker, 3);
-				if($host != $this->hostname || in_array($pid, $workerPids) || $pid == getmypid()) {
-					continue;
-				}
-				$this->logger->log(Psr\Log\LogLevel::INFO, 'Pruning dead worker: {worker}', array('worker' => (string)$worker));
-				$worker->unregisterWorker();
+
+                if ($host == $this->hostname && (in_array($pid, $workerPids) || $pid == getmypid())) {
+                    continue;
+                }
+
+                $workerLastPing = $worker->getLastHeartBeat();
+
+                if (!$workerLastPing || (time() - $workerLastPing) > 300) {
+                    $this->logger->log(Psr\Log\LogLevel::INFO, 'Pruning dead worker: {worker}', array('worker' => (string)$worker));
+                    $worker->unregisterWorker();
+                }
 			}
 		}
 	}
@@ -496,6 +513,7 @@ class Resque_Worker
 	 */
 	public function registerWorker()
 	{
+        $this->heartBeat();
 		Resque::redis()->sadd('workers', (string)$this);
 		Resque::redis()->set('worker:' . (string)$this . ':started', date('r'));
 	}
@@ -513,6 +531,7 @@ class Resque_Worker
 		Resque::redis()->srem('workers', $id);
 		Resque::redis()->del('worker:' . $id);
 		Resque::redis()->del('worker:' . $id . ':started');
+        Resque::redis()->hdel('heartbeats', $id);
 		Resque_Stat::clear('processed:' . $id);
 		Resque_Stat::clear('failed:' . $id);
 	}
@@ -572,6 +591,16 @@ class Resque_Worker
 			return json_decode($job, true);
 		}
 	}
+
+    public function heartBeat()
+    {
+        Resque::redis()->hset('heartbeats', $this, time());
+    }
+
+    public function getLastHeartBeat()
+    {
+        return Resque::redis()->hget('heartbeats', $this);
+    }
 
 	/**
 	 * Get a statistic belonging to this worker.
