@@ -30,6 +30,8 @@ class Resque
 
     protected static $logger = null;
 
+    protected static $loggerFactory = null;
+
 	/**
 	 * Given a host/port combination separated by a colon, set it as
 	 * the redis server that Resque will talk to.
@@ -47,9 +49,18 @@ class Resque
 		self::$redis         = null;
 	}
 
-    public static function setLogger($logger)
+    public static function setLoggerFactory($loggerFactory)
     {
-        self::$logger = $logger;
+        self::$loggerFactory = $loggerFactory;
+    }
+
+    public static function buildLogger(bool $verbose = false, string $loggerName = null)
+    {
+        if (self::$loggerFactory) {
+            return (self::$loggerFactory)($verbose, $loggerName);
+        }
+
+        return new Resque_Log($verbose);
     }
 
 	/**

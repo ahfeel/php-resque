@@ -63,9 +63,9 @@ class Resque_Worker
      *
      * @param string|array $queues String with a single queue name, array with multiple.
      */
-    public function __construct($queues)
+    public function __construct($queues, $logger = null)
     {
-        $this->logger = new Resque_Log();
+        $this->logger = $logger ?? new Resque_Log();
 
         if(!is_array($queues)) {
             $queues = array($queues);
