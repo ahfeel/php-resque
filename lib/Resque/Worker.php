@@ -49,7 +49,9 @@ class Resque_Worker
 	 */
 	private $child = null;
 
-    // Prune workers every 300 seconds
+    // Every PRUNE_WORKERS_FREQUENCY seconds, prune workers every who haven't reported for PRUNE_WORKERS_TIMEOUT seconds
+    const PRUNE_WORKERS_TIMEOUT = 600;
+    const PRUNE_WORKERS_FREQUENCY = 300;
     private $lastPrune = null;
 
     /**
@@ -160,7 +162,7 @@ class Resque_Worker
 
             $this->heartBeat();
 
-            if (time() - $this->lastPrune > 300) {
+            if (time() - $this->lastPrune > self::PRUNE_WORKERS_FREQUENCY) {
                 $this->pruneDeadWorkers();
             }
 
@@ -484,7 +486,7 @@ class Resque_Worker
 
                 $workerLastPing = $worker->getLastHeartBeat();
 
-                if (!$workerLastPing || (time() - $workerLastPing) > 300) {
+                if (!$workerLastPing || (time() - $workerLastPing) > self::PRUNE_WORKERS_TIMEOUT) {
                     $this->logger->log(Psr\Log\LogLevel::INFO, 'Pruning dead worker: {worker}', array('worker' => (string)$worker));
                     $worker->unregisterWorker();
                 }
@@ -594,6 +596,7 @@ class Resque_Worker
 
     public function heartBeat()
     {
+        Resque::redis()->sadd('workers', (string)$this);
         Resque::redis()->hset('heartbeats', $this, time());
     }
 
