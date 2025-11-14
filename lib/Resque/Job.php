@@ -90,7 +90,7 @@ class Resque_Job
             return false;
         }
 
-        return new Resque_Job($queue, $payload);
+        return Resque::buildJob($queue, $payload);
     }
 
     /**
@@ -109,7 +109,7 @@ class Resque_Job
             return false;
         }
 
-        return new Resque_Job($item['queue'], $item['payload']);
+        return Resque::buildJob($item['queue'], $item['payload']);
     }
 
 	/**

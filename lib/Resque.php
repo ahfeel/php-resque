@@ -32,6 +32,8 @@ class Resque
 
     protected static $loggerFactory = null;
 
+    protected static $jobFactory = null;
+
 	/**
 	 * Given a host/port combination separated by a colon, set it as
 	 * the redis server that Resque will talk to.
@@ -52,6 +54,20 @@ class Resque
     public static function setLoggerFactory($loggerFactory)
     {
         self::$loggerFactory = $loggerFactory;
+    }
+
+    public static function setJobFactory($jobFactory)
+    {
+        self::$jobFactory = $jobFactory;
+    }
+
+    public static function buildJob(string $queue, ?array $payload): Resque_Job
+    {
+        if (self::$jobFactory) {
+            return (self::$jobFactory)($queue, $payload);
+        }
+
+        return new Resque_Job($queue, $payload);
     }
 
     public static function buildLogger(bool $verbose = false, string $loggerName = null)
