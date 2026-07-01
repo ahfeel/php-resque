@@ -328,7 +328,7 @@ class Resque_Worker
 		$matching_queues = [];
 		$user_queues_regexp = [];
 		foreach ($this->queues as $queue) {
-			if (strpos($queue, '*') === FALSE)
+			if (strpos((string) $queue, '*') === FALSE)
 				$matching_queues[] = $queue;
 			else {
 				foreach ($queues as $rqueue) {
@@ -590,7 +590,7 @@ class Resque_Worker
 			return array();
 		}
 		else {
-			return json_decode($job, true);
+			return json_decode((string) $job, true);
 		}
 	}
 

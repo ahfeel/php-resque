@@ -8,6 +8,18 @@
  */
 class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 {
+	/**
+	 * Age a worker's heartbeat past the prune timeout so it is considered dead.
+	 */
+	private function expireHeartBeat(Resque_Worker $worker)
+	{
+		Resque::redis()->hset(
+			'heartbeats',
+			(string)$worker,
+			time() - Resque_Worker::PRUNE_WORKERS_TIMEOUT - 1
+		);
+	}
+
 	public function testWorkerRegistersInList()
 	{
 		$worker = new Resque_Worker('*');
@@ -206,16 +218,19 @@ class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 		$goodWorker->registerWorker();
 		$workerId = explode(':', $goodWorker);
 
-		// Register some bad workers
+		// Register some bad workers. A dead worker is one that has stopped
+		// sending heartbeats, so age their heartbeats past the prune timeout.
 		$worker = new Resque_Worker('jobs');
 		$worker->setLogger(new Resque_Log());
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->registerWorker();
+		$this->expireHeartBeat($worker);
 
 		$worker = new Resque_Worker(array('high', 'low'));
 		$worker->setLogger(new Resque_Log());
 		$worker->setId($workerId[0].':2:high,low');
 		$worker->registerWorker();
+		$this->expireHeartBeat($worker);
 
 		$this->assertEquals(3, count(Resque_Worker::all()));
 
@@ -227,14 +242,16 @@ class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 
 	public function testDeadWorkerCleanUpDoesNotCleanUnknownWorkers()
 	{
-		// Register a bad worker on this machine
+		// Register a dead worker on this machine (heartbeat aged out).
 		$worker = new Resque_Worker('jobs');
 		$worker->setLogger(new Resque_Log());
 		$workerId = explode(':', $worker);
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->registerWorker();
+		$this->expireHeartBeat($worker);
 
-		// Register some other false workers
+		// Register a worker on another host that is still alive (fresh
+		// heartbeat); it must not be pruned.
 		$worker = new Resque_Worker('jobs');
 		$worker->setLogger(new Resque_Log());
 		$worker->setId('my.other.host:1:jobs');

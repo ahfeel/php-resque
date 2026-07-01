@@ -34,7 +34,12 @@ class Resque_Event
 			if (!is_callable($callback)) {
 				continue;
 			}
-			call_user_func_array($callback, $data);
+			// Pass arguments positionally. As of PHP 8.0 string keys in the
+			// array given to call_user_func_array() are treated as named
+			// arguments, which breaks callbacks that receive an associative
+			// payload (e.g. the beforeEnqueue hook). array_values() preserves
+			// the pre-8.0 positional behaviour.
+			call_user_func_array($callback, array_values($data));
 		}
 		
 		return true;

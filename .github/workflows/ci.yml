@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Full test suite + Rector check. PHPUnit 11 and Rector require PHP >= 8.2,
+  # so the executable test suite runs on 8.2 and up.
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+    name: Tests (PHP ${{ matrix.php }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pcntl, redis
+          coverage: none
+
+      - name: Install redis-server
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+          # The test bootstrap starts its own redis-server on port 6379,
+          # so free the port by stopping the packaged service.
+          sudo service redis-server stop || true
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Check code is up to date with Rector
+        run: vendor/bin/rector process --dry-run
+
+      - name: Run test suite
+        run: vendor/bin/phpunit
+
+  # The library itself supports PHP >= 8.0. The dev tooling can't install there,
+  # so just confirm the sources lint and load on the older supported versions.
+  compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.1']
+    name: Compat (PHP ${{ matrix.php }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pcntl, redis
+          coverage: none
+
+      - name: Install runtime dependencies only
+        run: composer install --no-interaction --no-progress --no-dev
+
+      - name: Lint sources
+        run: find lib bin -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Load all classes
+        run: php -d error_reporting=E_ALL -r 'require "vendor/autoload.php"; Resque::buildLogger(); echo "loaded on PHP " . PHP_VERSION . PHP_EOL;'

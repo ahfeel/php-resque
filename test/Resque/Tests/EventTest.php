@@ -10,7 +10,9 @@ class Resque_Tests_EventTest extends Resque_Tests_TestCase
 {
 	private $callbacksHit = array();
 
-	public function setUp()
+	protected $worker;
+
+	public function setUp(): void
 	{
 		Test_Job::$called = false;
 
@@ -20,7 +22,7 @@ class Resque_Tests_EventTest extends Resque_Tests_TestCase
 		$this->worker->registerWorker();
 	}
 
-	public function tearDown()
+	public function tearDown(): void
 	{
 		Resque_Event::clearListeners();
 		$this->callbacksHit = array();
@@ -39,7 +41,7 @@ class Resque_Tests_EventTest extends Resque_Tests_TestCase
 		return $job;
 	}
 
-	public function eventCallbackProvider()
+	public static function eventCallbackProvider()
 	{
 		return array(
 			array('beforePerform', 'beforePerformEventCallback'),
@@ -48,9 +50,7 @@ class Resque_Tests_EventTest extends Resque_Tests_TestCase
 		);
 	}
 
-	/**
-	 * @dataProvider eventCallbackProvider
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('eventCallbackProvider')]
 	public function testEventCallbacksFire($event, $callback)
 	{
 		Resque_Event::listen($event, array($this, $callback));

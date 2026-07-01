@@ -70,7 +70,7 @@ class Resque
         return new Resque_Job($queue, $payload);
     }
 
-    public static function buildLogger(bool $verbose = false, string $loggerName = null)
+    public static function buildLogger(bool $verbose = false, ?string $loggerName = null)
     {
         if (self::$loggerFactory) {
             return (self::$loggerFactory)($verbose, $loggerName);
@@ -158,7 +158,7 @@ class Resque
 			return;
 		}
 
-		return json_decode($item, true);
+		return json_decode((string) $item, true);
 	}
 
 	/**
@@ -216,11 +216,11 @@ class Resque
 	     * But the blpop is a bit different. It returns the name as prefix:queue:name
 	     * So we need to strip off the prefix:queue: part
 	     */
-	    $queue = substr($item[0], strlen(self::redis()->getPrefix() . 'queue:'));
+	    $queue = substr((string) $item[0], strlen(self::redis()->getPrefix() . 'queue:'));
 
 	    return array(
 		'queue'   => $queue,
-		'payload' => json_decode($item[1], true)
+		'payload' => json_decode((string) $item[1], true)
 	    );
 	}
 
@@ -357,7 +357,7 @@ class Resque
 	 */
 	private static function matchItem($string, $items)
 	{
-	    $decoded = json_decode($string, true);
+	    $decoded = json_decode((string) $string, true);
 
 	    foreach($items as $key => $val) {
 		# class name only  ex: item[0] = ['class']

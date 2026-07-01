@@ -114,7 +114,7 @@ class Resque_Job_Status
 			return false;
 		}
 
-		$statusPacket = json_decode(Resque::redis()->get((string)$this), true);
+		$statusPacket = json_decode((string) Resque::redis()->get((string)$this), true);
 		if(!$statusPacket) {
 			return false;
 		}

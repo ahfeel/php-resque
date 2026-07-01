@@ -319,8 +319,8 @@ class Resque_Redis
 	{
 	    $prefix=self::getPrefix();
 
-	    if (substr($string, 0, strlen($prefix)) == $prefix) {
-	        $string = substr($string, strlen($prefix), strlen($string) );
+	    if (substr((string) $string, 0, strlen((string) $prefix)) == $prefix) {
+	        $string = substr((string) $string, strlen((string) $prefix), strlen((string) $string) );
 	    }
 	    return $string;
 	}

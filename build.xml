@@ -7,10 +7,8 @@
 		<mkdir dir="${basedir}/build/logs" />
 	</target>
 	<target name="phpunit">
-		<exec dir="${basedir}" executable="phpunit" failonerror="true">
-			<arg line="--log-junit         ${basedir}/build/logs/phpunit.xml
-				--coverage-clover ${basedir}/build/logs/clover.xml
-				--coverage-html   ${basedir}/build/coverage" />
+		<exec dir="${basedir}" executable="${basedir}/vendor/bin/phpunit" failonerror="true">
+			<arg line="--log-junit ${basedir}/build/logs/phpunit.xml" />
 		</exec>
 	</target>
 	<target name="build" depends="clean,prepare,phpunit" />
